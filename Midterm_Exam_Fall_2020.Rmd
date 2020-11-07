@@ -1,0 +1,186 @@
+---
+title: "Midterm Exam"
+author: "Rong Li"
+date: "11/2/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load("ggplot2", "arm", "pwr")
+```
+
+## Instruction
+
+This is your midterm exam that you are expected to work on it alone.  You may NOT  discuss any of the content of your exam with anyone except your instructor. This includes text, chat, email and other online forums.  We expect you to respect and follow the [GRS Academic and Professional Conduct Code](http://www.bu.edu/cas/files/2017/02/GRS-Academic-Conduct-Code-Final.pdf). 
+
+Although you may NOT ask anyone directly, you are allowed to use external resources such as R codes on the Internet.  If you do use someone's code, please make sure you clearly cite the origin of the code.
+
+When you finish, please compile and submit the PDF file and the link to the GitHub repository that contains the entire analysis.
+
+
+## Introduction
+
+In this exam, you will act as both the client and the consultant for the data that you collected in the data collection exercise (20pts).  Please note that you are not allowed to change the data.  The goal of this exam is to demonstrate your ability to perform the statistical analysis that you learned in this class so far.  It is important to note that significance of the analysis is not the main goal of this exam but the focus is on the appropriateness of your approaches.
+
+### Data Description (10pts)
+
+Please explain what your data is about and what the comparison of interest is.  In the process, please make sure to demonstrate that you can load your data properly into R.  
+  
+My data is about the monthly mean takeout times of three groups: undergraduate students, graduate students and working people. The data contains 18 observations and 3 columns.   
+I wonder which group orders takeouts most oftenly.  
+  
+Here are the first several rows of my data:  
+```{r, echo = FALSE}
+data <- read.csv("/Users/amelia/Documents/mssp/MA678/MA678_Midterm_Exam/survey.csv", header = TRUE)
+head(data)
+```
+  
+'status' refers to the group of the observation.  
+1: undergraduate students  
+2: graduate students  
+3: working people  
+
+'monthly.average' shows the average of takeout times every month.   
+
+'most.ordered' means the most ordered kind of food.  
+1: desserts and drinks  
+2: fast food  
+3: chinese cuisine  
+5: snacks   
+8: fruit   
+10: fresh product   
+  
+The third column isn't related to our question, so we will not use it in the following analysis.
+  
+### EDA (10pts)
+
+Please create one (maybe two) figure(s) that highlights the contrast of interest.  Make sure you think ahead and match your figure with the analysis.  For example, if your model requires you to take a log, make sure you take log in the figure as well.  
+  
+First I calculate the mean and standard deviation of each group.
+```{r, echo = FALSE}
+# calculate the mean and standard deviation of each group
+mean <- array()
+sd <- array()
+mean[1] <- mean(data$monthly.average[which(data$status == 1)])
+sd[1] <- sd(data$monthly.average[which(data$status == 1)])
+mean[2] <- mean(data$monthly.average[which(data$status == 2)])
+sd[2] <- sd(data$monthly.average[which(data$status == 2)])
+mean[3] <- mean(data$monthly.average[which(data$status == 3)])
+sd[3] <- sd(data$monthly.average[which(data$status == 3)])
+df <- data.frame(mean, sd)
+rownames(df) <- c("undergraduate", "graduate", "work")
+# dispaly
+df
+```
+  
+Then, I create the boxplot of monthly mean takeout times of three groups.  
+  
+```{r, echo = FALSE}
+# boxplot of raw data
+data$status[which(data$status == 1)] <- "undergraduate"
+data$status[which(data$status == 2)] <- "graduate"
+data$status[which(data$status == 3)] <- "work"
+ggplot() + 
+  geom_boxplot(data = data, aes(x = status, y = monthly.average)) + 
+  labs(title = "Boxplot of monthly mean takeout times", y = "Monthly mean of takeout times")
+```  
+  
+There is a outlier in the last graph, so we should drop it.  
+```{r, echo = FALSE}
+# boxplot without outlier
+df <- data[data$monthly.average<60, ]
+ggplot() + 
+  geom_boxplot(data = df, aes(x = status, y = monthly.average)) + 
+  ylim(0, 23) + 
+  labs(title = "Boxplot without outlier", y = "Monthly mean of takeout times")
+```  
+  
+From the graph, we can infer that there is a difference between each group.  
+  
+  
+### Power Analysis (10pts)
+
+Please perform power analysis on the project.  Use 80% power, the sample size you used and infer the level of effect size you will be able to detect.  Discuss whether your sample size was enough for the problem at hand.  Please note that method of power analysis should match the analysis.  Also, please clearly state why you should NOT use the effect size from the fitted model.
+
+```{r, echo = FALSE}
+pwr.anova.test(k = 3, n = 6, sig.level = 0.05, power = 0.8)
+```
+  
+The level of effect size is 0.811. It is large effect size.
+  
+```{r, echo = FALSE}
+pwr.anova.test(k = 3, f = 0.25, sig.level = 0.05, power = 0.8)
+```
+The result means we need more than 52 observations for each group. My sample size is not enough for the problem at hand. We should not use the effect size because of M-type error.
+
+
+### Modeling (10pts)
+
+Please pick a regression model that best fits your data and fit your model.  Please make sure you describe why you decide to choose the model. Also, if you are using GLM, make sure you explain your choice of link function as well.
+
+I use the linear regression to predict the monthly mean of takeout times and I  choose the status as predictor.  
+```{r }
+fit1 <- lm(monthly.average ~ factor(status), data = df)
+summary(fit1)
+```
+The model is $monthly.average = 5.333 + 2.000 \times indicator(undergraduate) + 7.867 \times indicator(work)$.  
+I choose this model because of the following reasons:  
+a. There is only one predictor;  
+b. The only predictor is indicator, so we should factor it;  
+c. The 'monthly.average' is a continues variable.  
+
+
+### Validation (10pts)
+
+Please perform a necessary validation and argue why your choice of the model is appropriate.  
+
+```{r }
+# External validation:
+par(mfrow = c(2, 2))
+plot(fit1)
+```
+The p-value of the model is 0.04 < 0.05, so we think there is a significant difference.  
+R-squared is 0.36 which means the model doesn't fit well.  
+The first and third plots look flat and the second plot looks like a straight line, so the current model is appropriate.  
+
+
+### Inference (10pts)
+
+Based on the result so far please perform statistical inference to compare the comparison of interest.
+
+```{r, echo = FALSE}
+confint(fit1)
+coefplot(fit1)
+```  
+  
+I calculate the confidence interval of the slopes.  
+I'm 97.5% ‘confident’ that the true slope of 'undergraduate' lies between -3.86 and 7.86.  
+I'm 97.5% ‘confident’ that the true slope of 'work' lies between 1.72 and 14.01.  
+Obviously, the working group orders takeout most oftenly. And the undergraduate group is the second. Graduate group is the last.  
+  
+
+### Discussion (10pts)
+
+Please clearly state your conclusion and the implication of the result.  
+    
+My conclusion:  
+The working group orders takeouts most oftenly.  
+  
+The model I use is:$monthly.average = 5.333 + 2.000 \times indicator(undergraduate) + 7.867 \times indicator(work)$.   
+**Intercept**. The intercept of 5.33 reflects the predicted monthly average of takeout times for graduate students.  
+**Undergraduate**. On average, the undergraduate students order takeouts 2 more times per month than graduate students.  
+**Work**. On average, the working people order takeouts 7.867 more times per month than graduate students.  
+
+
+### Limitations and future opportunity. (10pts)
+
+Please list concerns about your analysis.  Also, please state how you might go about fixing the problem in your future study.  
+My concern:  
+The r-square is really small which means the linear regression model doesn't fit well.   
+Maybe we could collect more observations and do ANOVA as well.  
+
+
+### Comments or questions
+If you have any comments or questions, please write them here.
+
